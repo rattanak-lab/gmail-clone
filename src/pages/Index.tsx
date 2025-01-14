@@ -1,24 +1,13 @@
-import { Mail, Inbox, Send, Trash, Star, File, Menu, Search as SearchIcon, Tag } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Menu, Search as SearchIcon, Inbox, Send, Trash, Star, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ComposeEmail from "@/components/ComposeEmail";
 import EmailView from "@/components/EmailView";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-
-interface Email {
-  id: string;
-  from: string;
-  subject: string;
-  preview: string;
-  date: string;
-  read: boolean;
-  folder: string;
-  labels: string[];
-  starred: boolean;
-}
+import Sidebar from "@/components/Sidebar";
+import EmailList from "@/components/EmailList";
+import { Email, Folder } from "@/types/email";
 
 const mockEmails: Email[] = [
   {
@@ -56,7 +45,7 @@ const mockEmails: Email[] = [
   },
 ];
 
-const folders = [
+const folders: Folder[] = [
   { id: "inbox", name: "Inbox", icon: Inbox },
   { id: "starred", name: "Starred", icon: Star },
   { id: "sent", name: "Sent", icon: Send },
@@ -77,14 +66,12 @@ const Index = () => {
 
   const filteredEmails = emails
     .filter((email) => {
-      // Filter by folder
       if (currentFolder === "starred") {
         return email.starred;
       }
       return email.folder === currentFolder;
     })
     .filter((email) => {
-      // Filter by selected labels
       if (selectedLabels.length === 0) return true;
       return selectedLabels.every((label) => email.labels.includes(label));
     })
@@ -127,51 +114,19 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar */}
       <div className={`bg-sidebar border-r ${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden`}>
-        <div className="p-4">
-          <Button 
-            className="w-full mb-6" 
-            size="lg"
-            onClick={() => setIsComposeOpen(true)}
-          >
-            <Mail className="mr-2 h-4 w-4" /> Compose
-          </Button>
-
-          <div className="space-y-2">
-            {folders.map((folder) => (
-              <Button
-                key={folder.id}
-                variant={currentFolder === folder.id ? "secondary" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => setCurrentFolder(folder.id)}
-              >
-                <folder.icon className="mr-2 h-4 w-4" /> {folder.name}
-              </Button>
-            ))}
-
-            <div className="pt-4">
-              <div className="text-sm font-medium text-muted-foreground px-3 py-2">
-                Labels
-              </div>
-              {labels.map((label) => (
-                <Button
-                  key={label}
-                  variant={selectedLabels.includes(label) ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => handleLabelClick(label)}
-                >
-                  <Tag className="mr-2 h-4 w-4" /> {label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <Sidebar
+          folders={folders}
+          labels={labels}
+          currentFolder={currentFolder}
+          selectedLabels={selectedLabels}
+          onComposeClick={() => setIsComposeOpen(true)}
+          onFolderClick={setCurrentFolder}
+          onLabelClick={handleLabelClick}
+        />
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <header className="border-b p-4 flex items-center">
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <Menu className="h-5 w-5" />
@@ -193,56 +148,11 @@ const Index = () => {
           </Avatar>
         </header>
 
-        {/* Email List */}
-        <ScrollArea className="flex-1">
-          <div className="divide-y">
-            {filteredEmails.map((email) => (
-              <div
-                key={email.id}
-                className={`p-4 hover:bg-accent cursor-pointer ${
-                  !email.read ? 'font-semibold bg-accent/50' : ''
-                }`}
-                onClick={() => handleEmailClick(email)}
-              >
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => handleStarEmail(email.id, e)}
-                  >
-                    <Star className={cn("h-4 w-4", email.starred && "fill-yellow-400 text-yellow-400")} />
-                  </Button>
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>{email.from[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm">{email.from}</span>
-                      <span className="text-xs text-muted-foreground">{email.date}</span>
-                    </div>
-                    <div className="text-sm font-medium">{email.subject}</div>
-                    <div className="text-sm text-muted-foreground truncate">
-                      {email.preview}
-                    </div>
-                    {email.labels.length > 0 && (
-                      <div className="flex gap-2 mt-2">
-                        {email.labels.map((label) => (
-                          <span
-                            key={label}
-                            className="px-2 py-1 rounded-full text-xs bg-accent"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
+        <EmailList
+          emails={filteredEmails}
+          onEmailClick={handleEmailClick}
+          onStarEmail={handleStarEmail}
+        />
       </div>
 
       {selectedEmail && (
