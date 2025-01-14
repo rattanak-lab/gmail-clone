@@ -1,9 +1,11 @@
-import { Mail, Inbox, Send, Trash, Star, File, Menu } from "lucide-react";
+import { Mail, Inbox, Send, Trash, Star, File, Menu, Search as SearchIcon, Tag } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ComposeEmail from "@/components/ComposeEmail";
+import EmailView from "@/components/EmailView";
+import { Input } from "@/components/ui/input";
 
 interface Email {
   id: string;
@@ -12,6 +14,8 @@ interface Email {
   preview: string;
   date: string;
   read: boolean;
+  folder: string;
+  labels: string[];
 }
 
 const mockEmails: Email[] = [
@@ -19,32 +23,75 @@ const mockEmails: Email[] = [
     id: "1",
     from: "John Doe",
     subject: "Weekly Team Meeting",
-    preview: "Hi team, Just a reminder about our weekly meeting tomorrow at 10 AM...",
+    preview: "Hi team, Just a reminder about our weekly meeting tomorrow at 10 AM. Please come prepared with your weekly updates and any blockers you'd like to discuss.",
     date: "10:30 AM",
     read: false,
+    folder: "inbox",
+    labels: ["work", "important"],
   },
   {
     id: "2",
     from: "Alice Smith",
     subject: "Project Update",
-    preview: "Here's the latest update on the project milestone...",
+    preview: "Here's the latest update on the project milestone. We've made significant progress on the key deliverables and are on track to meet our deadlines.",
     date: "9:15 AM",
     read: true,
+    folder: "inbox",
+    labels: ["work"],
   },
   {
     id: "3",
     from: "Marketing Team",
     subject: "Q2 Marketing Strategy",
-    preview: "Please review the attached Q2 marketing strategy document...",
+    preview: "Please review the attached Q2 marketing strategy document. We've incorporated the feedback from last quarter and added new initiatives for growth.",
     date: "Yesterday",
     read: true,
+    folder: "inbox",
+    labels: ["marketing"],
   },
 ];
+
+const folders = [
+  { id: "inbox", name: "Inbox", icon: Inbox },
+  { id: "starred", name: "Starred", icon: Star },
+  { id: "sent", name: "Sent", icon: Send },
+  { id: "drafts", name: "Drafts", icon: File },
+  { id: "trash", name: "Trash", icon: Trash },
+];
+
+const labels = ["work", "personal", "important", "marketing"];
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [emails, setEmails] = useState(mockEmails);
+  const [currentFolder, setCurrentFolder] = useState("inbox");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredEmails = emails
+    .filter((email) => email.folder === currentFolder)
+    .filter(
+      (email) =>
+        searchQuery === "" ||
+        email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.preview.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+  const handleEmailClick = (email: Email) => {
+    setSelectedEmail(email);
+    const updatedEmails = emails.map((e) =>
+      e.id === email.id ? { ...e, read: true } : e
+    );
+    setEmails(updatedEmails);
+  };
+
+  const handleDeleteEmail = (id: string) => {
+    setEmails(emails.map(email => 
+      email.id === id ? { ...email, folder: "trash" } : email
+    ));
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -60,21 +107,31 @@ const Index = () => {
           </Button>
 
           <div className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start">
-              <Inbox className="mr-2 h-4 w-4" /> Inbox
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <Star className="mr-2 h-4 w-4" /> Starred
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <Send className="mr-2 h-4 w-4" /> Sent
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <File className="mr-2 h-4 w-4" /> Drafts
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <Trash className="mr-2 h-4 w-4" /> Trash
-            </Button>
+            {folders.map((folder) => (
+              <Button
+                key={folder.id}
+                variant={currentFolder === folder.id ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setCurrentFolder(folder.id)}
+              >
+                <folder.icon className="mr-2 h-4 w-4" /> {folder.name}
+              </Button>
+            ))}
+
+            <div className="pt-4">
+              <div className="text-sm font-medium text-muted-foreground px-3 py-2">
+                Labels
+              </div>
+              {labels.map((label) => (
+                <Button
+                  key={label}
+                  variant="ghost"
+                  className="w-full justify-start"
+                >
+                  <Tag className="mr-2 h-4 w-4" /> {label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -87,11 +144,15 @@ const Index = () => {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex-1 px-4">
-            <input
-              type="text"
-              placeholder="Search mail"
-              className="w-full max-w-xl px-4 py-2 rounded-lg border bg-background"
-            />
+            <div className="relative max-w-xl">
+              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search emails"
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
           <Avatar>
             <AvatarImage src="https://github.com/shadcn.png" />
@@ -102,13 +163,13 @@ const Index = () => {
         {/* Email List */}
         <ScrollArea className="flex-1">
           <div className="divide-y">
-            {mockEmails.map((email) => (
+            {filteredEmails.map((email) => (
               <div
                 key={email.id}
                 className={`p-4 hover:bg-accent cursor-pointer ${
                   !email.read ? 'font-semibold bg-accent/50' : ''
                 }`}
-                onClick={() => setSelectedEmail(email)}
+                onClick={() => handleEmailClick(email)}
               >
                 <div className="flex items-center gap-4">
                   <Avatar className="h-8 w-8">
@@ -123,6 +184,18 @@ const Index = () => {
                     <div className="text-sm text-muted-foreground truncate">
                       {email.preview}
                     </div>
+                    {email.labels.length > 0 && (
+                      <div className="flex gap-2 mt-2">
+                        {email.labels.map((label) => (
+                          <span
+                            key={label}
+                            className="px-2 py-1 rounded-full text-xs bg-accent"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -130,6 +203,14 @@ const Index = () => {
           </div>
         </ScrollArea>
       </div>
+
+      {selectedEmail && (
+        <EmailView
+          email={selectedEmail}
+          onClose={() => setSelectedEmail(null)}
+          onDelete={handleDeleteEmail}
+        />
+      )}
 
       <ComposeEmail 
         isOpen={isComposeOpen} 

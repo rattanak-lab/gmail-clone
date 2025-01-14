@@ -8,18 +8,35 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ComposeEmailProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultTo?: string;
+  defaultSubject?: string;
+  defaultContent?: string;
 }
 
-const ComposeEmail = ({ isOpen, onClose }: ComposeEmailProps) => {
-  const [to, setTo] = useState("");
-  const [subject, setSubject] = useState("");
-  const [content, setContent] = useState("");
+const ComposeEmail = ({ 
+  isOpen, 
+  onClose, 
+  defaultTo = "", 
+  defaultSubject = "", 
+  defaultContent = "" 
+}: ComposeEmailProps) => {
+  const [to, setTo] = useState(defaultTo);
+  const [subject, setSubject] = useState(defaultSubject);
+  const [content, setContent] = useState(defaultContent);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+      setTo(defaultTo);
+      setSubject(defaultSubject);
+      setContent(defaultContent);
+    }
+  }, [isOpen, defaultTo, defaultSubject, defaultContent]);
 
   const handleSend = () => {
     console.log("Sending email:", { to, subject, content });
