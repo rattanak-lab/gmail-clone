@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ComposeEmail from "@/components/ComposeEmail";
 import EmailView from "@/components/EmailView";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface Email {
   id: string;
@@ -16,6 +17,7 @@ interface Email {
   read: boolean;
   folder: string;
   labels: string[];
+  starred: boolean;
 }
 
 const mockEmails: Email[] = [
@@ -28,6 +30,7 @@ const mockEmails: Email[] = [
     read: false,
     folder: "inbox",
     labels: ["work", "important"],
+    starred: false,
   },
   {
     id: "2",
@@ -38,6 +41,7 @@ const mockEmails: Email[] = [
     read: true,
     folder: "inbox",
     labels: ["work"],
+    starred: true,
   },
   {
     id: "3",
@@ -48,6 +52,7 @@ const mockEmails: Email[] = [
     read: true,
     folder: "inbox",
     labels: ["marketing"],
+    starred: false,
   },
 ];
 
@@ -67,10 +72,22 @@ const Index = () => {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [emails, setEmails] = useState(mockEmails);
   const [currentFolder, setCurrentFolder] = useState("inbox");
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredEmails = emails
-    .filter((email) => email.folder === currentFolder)
+    .filter((email) => {
+      // Filter by folder
+      if (currentFolder === "starred") {
+        return email.starred;
+      }
+      return email.folder === currentFolder;
+    })
+    .filter((email) => {
+      // Filter by selected labels
+      if (selectedLabels.length === 0) return true;
+      return selectedLabels.every((label) => email.labels.includes(label));
+    })
     .filter(
       (email) =>
         searchQuery === "" ||
@@ -91,6 +108,21 @@ const Index = () => {
     setEmails(emails.map(email => 
       email.id === id ? { ...email, folder: "trash" } : email
     ));
+  };
+
+  const handleStarEmail = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEmails(emails.map(email =>
+      email.id === id ? { ...email, starred: !email.starred } : email
+    ));
+  };
+
+  const handleLabelClick = (label: string) => {
+    setSelectedLabels(prev => 
+      prev.includes(label) 
+        ? prev.filter(l => l !== label)
+        : [...prev, label]
+    );
   };
 
   return (
@@ -125,8 +157,9 @@ const Index = () => {
               {labels.map((label) => (
                 <Button
                   key={label}
-                  variant="ghost"
+                  variant={selectedLabels.includes(label) ? "secondary" : "ghost"}
                   className="w-full justify-start"
+                  onClick={() => handleLabelClick(label)}
                 >
                   <Tag className="mr-2 h-4 w-4" /> {label}
                 </Button>
@@ -172,6 +205,14 @@ const Index = () => {
                 onClick={() => handleEmailClick(email)}
               >
                 <div className="flex items-center gap-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => handleStarEmail(email.id, e)}
+                  >
+                    <Star className={cn("h-4 w-4", email.starred && "fill-yellow-400 text-yellow-400")} />
+                  </Button>
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>{email.from[0]}</AvatarFallback>
                   </Avatar>
