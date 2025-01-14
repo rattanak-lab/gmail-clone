@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ComposeEmail from "@/components/ComposeEmail";
 
 interface Email {
   id: string;
@@ -43,13 +44,18 @@ const mockEmails: Email[] = [
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <div className={`bg-sidebar border-r ${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden`}>
         <div className="p-4">
-          <Button className="w-full mb-6" size="lg">
+          <Button 
+            className="w-full mb-6" 
+            size="lg"
+            onClick={() => setIsComposeOpen(true)}
+          >
             <Mail className="mr-2 h-4 w-4" /> Compose
           </Button>
 
@@ -124,6 +130,11 @@ const Index = () => {
           </div>
         </ScrollArea>
       </div>
+
+      <ComposeEmail 
+        isOpen={isComposeOpen} 
+        onClose={() => setIsComposeOpen(false)} 
+      />
     </div>
   );
 };
