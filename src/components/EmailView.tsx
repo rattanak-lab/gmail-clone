@@ -5,21 +5,16 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import ComposeEmail from "./ComposeEmail";
+import { Email } from "@/types/email";
 
 interface EmailViewProps {
-  email: {
-    id: string;
-    from: string;
-    subject: string;
-    preview: string;
-    date: string;
-    read: boolean;
-  } | null;
+  email: Email | null;
+  thread?: Email[];
   onClose: () => void;
   onDelete: (id: string) => void;
 }
 
-const EmailView = ({ email, onClose, onDelete }: EmailViewProps) => {
+const EmailView = ({ email, thread = [], onClose, onDelete }: EmailViewProps) => {
   const { toast } = useToast();
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [isForwardOpen, setIsForwardOpen] = useState(false);
@@ -33,6 +28,10 @@ const EmailView = ({ email, onClose, onDelete }: EmailViewProps) => {
       description: "The email has been moved to trash.",
     });
     onClose();
+  };
+
+  const renderEmailContent = (content: string) => {
+    return <div dangerouslySetInnerHTML={{ __html: content || '' }} />;
   };
 
   return (
@@ -49,36 +48,61 @@ const EmailView = ({ email, onClose, onDelete }: EmailViewProps) => {
           </SheetHeader>
           
           <div className="mt-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Avatar>
-                  <AvatarFallback>{email.from[0]}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium">{email.from}</div>
-                  <div className="text-sm text-muted-foreground">{email.date}</div>
+            {[email, ...thread].map((threadEmail, index) => (
+              <div key={threadEmail.id} className="border-t first:border-t-0 pt-4 first:pt-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <Avatar>
+                      <AvatarFallback>{threadEmail.from[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{threadEmail.from}</div>
+                      <div className="text-sm text-muted-foreground">{threadEmail.date}</div>
+                    </div>
+                  </div>
+                  
+                  {index === 0 && (
+                    <div className="flex space-x-2">
+                      <Button variant="outline" onClick={() => setIsReplyOpen(true)}>
+                        <Reply className="mr-2 h-4 w-4" />
+                        Reply
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsForwardOpen(true)}>
+                        <Forward className="mr-2 h-4 w-4" />
+                        Forward
+                      </Button>
+                      <Button variant="outline" onClick={handleDelete}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
+                
+                <div className="prose prose-sm max-w-none mt-4">
+                  {renderEmailContent(threadEmail.content || threadEmail.preview)}
+                </div>
+
+                {threadEmail.attachments && threadEmail.attachments.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <div className="text-sm font-medium">Attachments:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {threadEmail.attachments.map((attachment) => (
+                        <a
+                          key={attachment.id}
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center p-2 bg-muted rounded hover:bg-accent"
+                        >
+                          <span className="text-sm">{attachment.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={() => setIsReplyOpen(true)}>
-                  <Reply className="mr-2 h-4 w-4" />
-                  Reply
-                </Button>
-                <Button variant="outline" onClick={() => setIsForwardOpen(true)}>
-                  <Forward className="mr-2 h-4 w-4" />
-                  Forward
-                </Button>
-                <Button variant="outline" onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-            
-            <div className="prose prose-sm max-w-none">
-              {email.preview}
-            </div>
+            ))}
           </div>
         </SheetContent>
       </Sheet>

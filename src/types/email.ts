@@ -8,6 +8,10 @@ export interface Email {
   folder: string;
   labels: string[];
   starred: boolean;
+  content?: string;
+  attachments?: Attachment[];
+  threadId?: string;
+  parentId?: string;
 }
 
 export type Folder = {
@@ -15,3 +19,11 @@ export type Folder = {
   name: string;
   icon: any;
 };
+
+export interface Attachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+}
