@@ -1,6 +1,6 @@
 export interface Email {
   id: string;
-  from: string;
+  from_email: string;  // Changed from 'from' to 'from_email'
   subject: string;
   preview: string;
   date: string;

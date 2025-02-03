@@ -28,11 +28,11 @@ const EmailListItem = ({ email, onClick, onStar }: EmailListItemProps) => {
           <Star className={cn("h-4 w-4", email.starred && "fill-yellow-400 text-yellow-400")} />
         </Button>
         <Avatar className="h-8 w-8">
-          <AvatarFallback>{email.from[0]}</AvatarFallback>
+          <AvatarFallback>{email.from_email[0]}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center mb-1">
-            <span className="text-sm">{email.from}</span>
+            <span className="text-sm">{email.from_email}</span>
             <span className="text-xs text-muted-foreground">{email.date}</span>
           </div>
           <div className="text-sm font-medium">{email.subject}</div>
