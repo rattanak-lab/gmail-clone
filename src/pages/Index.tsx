@@ -7,6 +7,7 @@ import EmailView from "@/components/EmailView";
 import { Input } from "@/components/ui/input";
 import Sidebar from "@/components/Sidebar";
 import EmailList from "@/components/EmailList";
+import ProfileEdit from "@/components/ProfileEdit";
 import { Email, Folder } from "@/types/email";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,7 @@ const Index = () => {
   const [currentFolder, setCurrentFolder] = useState("inbox");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -205,17 +207,30 @@ const Index = () => {
               />
             </div>
           </div>
-          <Avatar>
-            <AvatarImage src="https://github.com/shadcn.png" />
-            <AvatarFallback>CN</AvatarFallback>
-          </Avatar>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-2"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <Avatar>
+              <AvatarImage src="https://github.com/shadcn.png" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+          </Button>
         </header>
 
-        <EmailList
-          emails={filteredEmails}
-          onEmailClick={handleEmailClick}
-          onStarEmail={handleStarEmail}
-        />
+        {isProfileOpen ? (
+          <div className="p-4">
+            <ProfileEdit />
+          </div>
+        ) : (
+          <EmailList
+            emails={filteredEmails}
+            onEmailClick={handleEmailClick}
+            onStarEmail={handleStarEmail}
+          />
+        )}
       </div>
 
       {selectedEmail && (
