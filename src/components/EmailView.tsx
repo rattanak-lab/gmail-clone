@@ -53,10 +53,10 @@ const EmailView = ({ email, thread = [], onClose, onDelete }: EmailViewProps) =>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <Avatar>
-                      <AvatarFallback>{threadEmail.from[0]}</AvatarFallback>
+                      <AvatarFallback>{threadEmail.from_email[0]}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{threadEmail.from}</div>
+                      <div className="font-medium">{threadEmail.from_email}</div>
                       <div className="text-sm text-muted-foreground">{threadEmail.date}</div>
                     </div>
                   </div>
@@ -110,16 +110,16 @@ const EmailView = ({ email, thread = [], onClose, onDelete }: EmailViewProps) =>
       <ComposeEmail 
         isOpen={isReplyOpen}
         onClose={() => setIsReplyOpen(false)}
-        defaultTo={email.from}
+        defaultTo={email.from_email}
         defaultSubject={`Re: ${email.subject}`}
-        defaultContent={`\n\nOn ${email.date}, ${email.from} wrote:\n${email.preview}`}
+        defaultContent={`\n\nOn ${email.date}, ${email.from_email} wrote:\n${email.preview}`}
       />
 
       <ComposeEmail
         isOpen={isForwardOpen}
         onClose={() => setIsForwardOpen(false)}
         defaultSubject={`Fwd: ${email.subject}`}
-        defaultContent={`\n\n---------- Forwarded message ---------\nFrom: ${email.from}\nDate: ${email.date}\nSubject: ${email.subject}\n\n${email.preview}`}
+        defaultContent={`\n\n---------- Forwarded message ---------\nFrom: ${email.from_email}\nDate: ${email.date}\nSubject: ${email.subject}\n\n${email.preview}`}
       />
     </>
   );
