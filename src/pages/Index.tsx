@@ -1,6 +1,6 @@
 import { Menu, Search as SearchIcon, Inbox, Send, Trash, Star, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ComposeEmail from "@/components/ComposeEmail";
 import EmailView from "@/components/EmailView";
@@ -8,42 +8,9 @@ import { Input } from "@/components/ui/input";
 import Sidebar from "@/components/Sidebar";
 import EmailList from "@/components/EmailList";
 import { Email, Folder } from "@/types/email";
-
-const mockEmails: Email[] = [
-  {
-    id: "1",
-    from: "John Doe",
-    subject: "Weekly Team Meeting",
-    preview: "Hi team, Just a reminder about our weekly meeting tomorrow at 10 AM. Please come prepared with your weekly updates and any blockers you'd like to discuss.",
-    date: "10:30 AM",
-    read: false,
-    folder: "inbox",
-    labels: ["work", "important"],
-    starred: false,
-  },
-  {
-    id: "2",
-    from: "Alice Smith",
-    subject: "Project Update",
-    preview: "Here's the latest update on the project milestone. We've made significant progress on the key deliverables and are on track to meet our deadlines.",
-    date: "9:15 AM",
-    read: true,
-    folder: "inbox",
-    labels: ["work"],
-    starred: true,
-  },
-  {
-    id: "3",
-    from: "Marketing Team",
-    subject: "Q2 Marketing Strategy",
-    preview: "Please review the attached Q2 marketing strategy document. We've incorporated the feedback from last quarter and added new initiatives for growth.",
-    date: "Yesterday",
-    read: true,
-    folder: "inbox",
-    labels: ["marketing"],
-    starred: false,
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const folders: Folder[] = [
   { id: "inbox", name: "Inbox", icon: Inbox },
@@ -59,49 +26,141 @@ const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
-  const [emails, setEmails] = useState(mockEmails);
   const [currentFolder, setCurrentFolder] = useState("inbox");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch emails from Supabase
+  const { data: emails = [], isLoading } = useQuery({
+    queryKey: ['emails', currentFolder, selectedLabels],
+    queryFn: async () => {
+      console.log('Fetching emails for folder:', currentFolder);
+      let query = supabase
+        .from('emails')
+        .select(`
+          *,
+          attachments (*)
+        `)
+        .order('date', { ascending: false });
+
+      if (currentFolder === 'starred') {
+        query = query.eq('starred', true);
+      } else {
+        query = query.eq('folder', currentFolder);
+      }
+
+      if (selectedLabels.length > 0) {
+        query = query.contains('labels', selectedLabels);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching emails:', error);
+        toast({
+          title: "Error fetching emails",
+          description: error.message,
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      return data || [];
+    },
+  });
+
+  // Set up real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'emails'
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['emails'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const filteredEmails = emails
-    .filter((email) => {
-      if (currentFolder === "starred") {
-        return email.starred;
-      }
-      return email.folder === currentFolder;
-    })
-    .filter((email) => {
-      if (selectedLabels.length === 0) return true;
-      return selectedLabels.every((label) => email.labels.includes(label));
-    })
-    .filter(
-      (email) =>
-        searchQuery === "" ||
-        email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        email.preview.toLowerCase().includes(searchQuery.toLowerCase())
+    .filter((email) =>
+      searchQuery === "" ||
+      email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.from_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.preview.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-  const handleEmailClick = (email: Email) => {
+  const handleEmailClick = async (email: Email) => {
     setSelectedEmail(email);
-    const updatedEmails = emails.map((e) =>
-      e.id === email.id ? { ...e, read: true } : e
-    );
-    setEmails(updatedEmails);
+    if (!email.read) {
+      const { error } = await supabase
+        .from('emails')
+        .update({ read: true })
+        .eq('id', email.id);
+
+      if (error) {
+        console.error('Error marking email as read:', error);
+        toast({
+          title: "Error",
+          description: "Failed to mark email as read",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
-  const handleDeleteEmail = (id: string) => {
-    setEmails(emails.map(email => 
-      email.id === id ? { ...email, folder: "trash" } : email
-    ));
+  const handleDeleteEmail = async (id: string) => {
+    const { error } = await supabase
+      .from('emails')
+      .update({ folder: 'trash' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error moving email to trash:', error);
+      toast({
+        title: "Error",
+        description: "Failed to move email to trash",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Email moved to trash",
+      description: "The email has been moved to the trash folder",
+    });
   };
 
-  const handleStarEmail = (id: string, e: React.MouseEvent) => {
+  const handleStarEmail = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEmails(emails.map(email =>
-      email.id === id ? { ...email, starred: !email.starred } : email
-    ));
+    const email = emails.find(e => e.id === id);
+    if (!email) return;
+
+    const { error } = await supabase
+      .from('emails')
+      .update({ starred: !email.starred })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating star status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update star status",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLabelClick = (label: string) => {
@@ -111,6 +170,10 @@ const Index = () => {
         : [...prev, label]
     );
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
 
   return (
     <div className="flex h-screen bg-background">

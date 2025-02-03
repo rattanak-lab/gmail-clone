@@ -9,7 +9,125 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      attachments: {
+        Row: {
+          created_at: string
+          email_id: string
+          id: string
+          name: string
+          size: number
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          email_id: string
+          id?: string
+          name: string
+          size: number
+          type: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          email_id?: string
+          id?: string
+          name?: string
+          size?: number
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachments_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emails: {
+        Row: {
+          content: string | null
+          created_at: string
+          date: string
+          folder: string | null
+          from_email: string
+          id: string
+          labels: string[] | null
+          preview: string
+          read: boolean | null
+          starred: boolean | null
+          subject: string
+          thread_id: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          date?: string
+          folder?: string | null
+          from_email: string
+          id?: string
+          labels?: string[] | null
+          preview: string
+          read?: boolean | null
+          starred?: boolean | null
+          subject: string
+          thread_id?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          date?: string
+          folder?: string | null
+          from_email?: string
+          id?: string
+          labels?: string[] | null
+          preview?: string
+          read?: boolean | null
+          starred?: boolean | null
+          subject?: string
+          thread_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

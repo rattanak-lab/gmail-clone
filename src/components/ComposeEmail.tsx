@@ -11,6 +11,8 @@ import { useState, useEffect, useRef } from "react";
 import RichTextEditor from "./RichTextEditor";
 import { Paperclip, X } from "lucide-react";
 import { Attachment } from "@/types/email";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ComposeEmailProps {
   isOpen: boolean;
@@ -31,8 +33,10 @@ const ComposeEmail = ({
   const [subject, setSubject] = useState(defaultSubject);
   const [content, setContent] = useState(defaultContent);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isOpen) {
@@ -43,16 +47,42 @@ const ComposeEmail = ({
     }
   }, [isOpen, defaultTo, defaultSubject, defaultContent]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newAttachments: Attachment[] = Array.from(files).map(file => ({
-        id: Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: URL.createObjectURL(file)
-      }));
+      const newAttachments: Attachment[] = [];
+      
+      for (const file of Array.from(files)) {
+        const fileName = `${Date.now()}-${file.name}`;
+        const { data, error } = await supabase.storage
+          .from('email-attachments')
+          .upload(fileName, file);
+
+        if (error) {
+          console.error('Error uploading file:', error);
+          toast({
+            title: "Error uploading file",
+            description: error.message,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        if (data) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('email-attachments')
+            .getPublicUrl(fileName);
+
+          newAttachments.push({
+            id: Math.random().toString(36).substr(2, 9),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: publicUrl
+          });
+        }
+      }
+
       setAttachments(prev => [...prev, ...newAttachments]);
     }
     if (fileInputRef.current) {
@@ -64,13 +94,80 @@ const ComposeEmail = ({
     setAttachments(prev => prev.filter(att => att.id !== id));
   };
 
-  const handleSend = () => {
-    console.log("Sending email:", { to, subject, content, attachments });
-    toast({
-      title: "Email sent",
-      description: "Your email has been sent successfully.",
-    });
-    onClose();
+  const handleSend = async () => {
+    try {
+      setIsSending(true);
+      console.log("Sending email:", { to, subject, content, attachments });
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to send emails",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Insert the email
+      const { data: emailData, error: emailError } = await supabase
+        .from('emails')
+        .insert({
+          from_email: user.email,
+          subject,
+          content,
+          preview: content.replace(/<[^>]*>/g, '').substring(0, 100),
+          folder: 'sent',
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (emailError) {
+        throw emailError;
+      }
+
+      // Insert attachments if any
+      if (attachments.length > 0 && emailData) {
+        const { error: attachmentError } = await supabase
+          .from('attachments')
+          .insert(
+            attachments.map(att => ({
+              email_id: emailData.id,
+              name: att.name,
+              size: att.size,
+              type: att.type,
+              url: att.url
+            }))
+          );
+
+        if (attachmentError) {
+          throw attachmentError;
+        }
+      }
+
+      toast({
+        title: "Email sent",
+        description: "Your email has been sent successfully.",
+      });
+
+      // Invalidate the emails query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Error sending email",
+        description: error instanceof Error ? error.message : "An error occurred while sending the email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -132,7 +229,9 @@ const ComposeEmail = ({
             <Button variant="outline" onClick={onClose}>
               Discard
             </Button>
-            <Button onClick={handleSend}>Send</Button>
+            <Button onClick={handleSend} disabled={isSending}>
+              {isSending ? "Sending..." : "Send"}
+            </Button>
           </div>
         </div>
       </DialogContent>
