@@ -18,7 +18,8 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce'
     }
   }
 );
@@ -28,5 +29,7 @@ supabase.auth.onAuthStateChange((event, session) => {
   console.log('Supabase auth event:', event);
   if (session) {
     console.log('User session available');
+  } else {
+    console.log('No user session available');
   }
 });

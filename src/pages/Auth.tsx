@@ -19,11 +19,14 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      console.log(`Attempting to ${isSignUp ? 'sign up' : 'sign in'} user:`, email);
+      
       if (isSignUp) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: window.location.origin,
             data: {
               email: email,
             },
@@ -44,6 +47,7 @@ const Auth = () => {
 
         if (signInError) throw signInError;
 
+        console.log('Sign in successful:', signInData);
         toast({
           title: "Logged in successfully",
           description: "Welcome back!",
@@ -54,7 +58,7 @@ const Auth = () => {
       console.error("Authentication error:", error);
       toast({
         title: "Authentication error",
-        description: error.message,
+        description: error.message || "An error occurred during authentication",
         variant: "destructive",
       });
     } finally {
