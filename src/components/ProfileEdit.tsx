@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/AuthProvider";
@@ -38,7 +38,7 @@ const ProfileEdit = () => {
   };
 
   // Call fetchProfile when component mounts
-  useState(() => {
+  useEffect(() => {
     fetchProfile();
   }, [user]);
 
