@@ -37,7 +37,6 @@ const ProfileEdit = () => {
     }
   };
 
-  // Call fetchProfile when component mounts
   useEffect(() => {
     fetchProfile();
   }, [user]);
@@ -86,7 +85,7 @@ const ProfileEdit = () => {
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from('profile-images')
         .upload(filePath, file);
 
@@ -105,7 +104,9 @@ const ProfileEdit = () => {
 
       if (updateError) throw updateError;
 
+      // Update local state immediately
       setAvatarUrl(publicUrl);
+      
       toast({
         title: "Profile picture updated",
         description: "Your profile picture has been updated successfully.",
@@ -132,10 +133,13 @@ const ProfileEdit = () => {
           onClick={handleImageClick}
         >
           <Avatar className="h-24 w-24">
-            <AvatarImage src={avatarUrl || undefined} />
-            <AvatarFallback>
-              {user?.email?.charAt(0).toUpperCase() || '?'}
-            </AvatarFallback>
+            {avatarUrl ? (
+              <AvatarImage src={avatarUrl} alt="Profile" />
+            ) : (
+              <AvatarFallback>
+                {user?.email?.charAt(0).toUpperCase() || '?'}
+              </AvatarFallback>
+            )}
           </Avatar>
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-full flex items-center justify-center">
             <span className="text-white opacity-0 group-hover:opacity-100">
