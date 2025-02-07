@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,14 +27,19 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
               email: email,
             },
           },
         });
 
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          if (signUpError.message.includes("User already registered")) {
+            throw new Error("This email is already registered. Please sign in instead.");
+          }
+          throw signUpError;
+        }
 
         toast({
           title: "Account created successfully",
@@ -45,7 +51,12 @@ const Auth = () => {
           password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          if (signInError.message.includes("Invalid login credentials")) {
+            throw new Error("Invalid email or password. Please try again.");
+          }
+          throw signInError;
+        }
 
         console.log('Sign in successful:', signInData);
         toast({
@@ -98,6 +109,7 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
           </div>
