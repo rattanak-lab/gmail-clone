@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,18 +20,26 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      console.log(`Attempting to ${isSignUp ? 'sign up' : 'sign in'} user:`, email);
+      
       if (isSignUp) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
               email: email,
             },
           },
         });
 
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          if (signUpError.message.includes("User already registered")) {
+            throw new Error("This email is already registered. Please sign in instead.");
+          }
+          throw signUpError;
+        }
 
         toast({
           title: "Account created successfully",
@@ -42,8 +51,14 @@ const Auth = () => {
           password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          if (signInError.message.includes("Invalid login credentials")) {
+            throw new Error("Invalid email or password. Please try again.");
+          }
+          throw signInError;
+        }
 
+        console.log('Sign in successful:', signInData);
         toast({
           title: "Logged in successfully",
           description: "Welcome back!",
@@ -54,7 +69,7 @@ const Auth = () => {
       console.error("Authentication error:", error);
       toast({
         title: "Authentication error",
-        description: error.message,
+        description: error.message || "An error occurred during authentication",
         variant: "destructive",
       });
     } finally {
@@ -94,6 +109,7 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
           </div>
